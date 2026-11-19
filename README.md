@@ -2,13 +2,11 @@
 
 A 60 second match timer in the browser for VEX GO practice.
 
-Live page : https://irap.club/vex-unofficial-timer/
-
 This is an unofficial practice tool. It is not affiliated with or endorsed by VEX Robotics.
 
 ## Credit
 
-The look of the timer and every sound in `sounds/timer.mp3` come from the video "UPDATED VEX IQ Official Timer with 3 sec countdown" by Ben Lipper : https://www.youtube.com/watch?v=ZEBHVsnhAi4
+The look of the timer and every sound in `sounds/timer.mp3` come from the video "UPDATED VEX IQ Official Timer with 3 sec countdown" by Ben Lipper on YouTube.
 
 ## Modes
 
