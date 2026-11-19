@@ -24,6 +24,7 @@ In both modes the last 10 seconds are shown in yellow and the end sound plays at
 | Space | Start, pause and resume |
 | Left / Right arrow | Move the match time back or forward 1 second |
 | Tab | Switch between Teamwork and Robot Skills (only when no match is running) |
+| Backspace | Reset the timer to 1:00 |
 
 Every key can be changed in the settings. Keys use `KeyboardEvent.code`, so they work with any keyboard layout.
 
