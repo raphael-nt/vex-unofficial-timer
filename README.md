@@ -15,7 +15,7 @@ The look of the timer and every sound in `sounds/timer.mp3` come from the video 
 - **Teamwork Challenge** : 3, 2, 1 countdown, then 60 seconds of driver control. From 0:35 to 0:25 the bar shows DRIVER SWITCH and the controller icon blinks. A sound plays and the time flashes orange at 0:35 and 0:25.
 - **Robot Skills Challenge** : 3, 2, 1 countdown, then 60 seconds of driver control with no switch window.
 
-In both modes the last 10 seconds are shown in yellow and the end sound plays at 0:00.
+In both modes the last 10 seconds are shown in yellow and the end sound plays at 0:00. The 3, 2, 1 countdown plays the beeps and the start sound as one piece, with the numbers timed to the beeps like the reference video.
 
 ## Keys
 
@@ -29,16 +29,20 @@ Every key can be changed in the settings. Keys use `KeyboardEvent.code`, so they
 
 ## Seek bar
 
-- Pausing shows a seek bar above the bottom bar. It stays until the match resumes, then hides at once.
+- Moving the mouse or touching the screen during a match shows the blue seek bar. It fades out with the corner buttons after 2.5 seconds without movement.
+- Pausing shows the seek bar and keeps it on screen until the match resumes, then it hides at once.
+- The right end shows the time like YouTube, for example 0:25 / 1:00 (time played out of the full match).
 - Seeking with the arrow keys shows the bar, which fades out after the key is released.
 - Click or drag on the bar to jump to a time. White marks show 0:35 and 0:25 in Teamwork mode.
 - Seeking does not play the 0:35, 0:25 or end sounds. They only play when the clock runs past them.
 
 ## Settings
 
-The gear in the bottom left holds every setting : mode, volume, keys, full screen, and a link to VEX GO Builder. The page is in English only. Settings are kept in the browser with localStorage.
+The gear in the bottom left holds every setting : mode, volume, keys, and a link to VEX GO Builder. The page is in English only. Settings are kept in the browser with localStorage.
 
-Play and reset buttons sit in the bottom right corner. They hide while a match runs and come back when you move the mouse or touch the screen.
+Play and reset buttons sit in the bottom right corner and the full screen button in the top right corner. They hide while a match runs and come back when you move the mouse or touch the screen.
+
+Sizes follow the screen (vw, vh and vmin units), from phones to 4K projectors.
 
 ## Files
 
