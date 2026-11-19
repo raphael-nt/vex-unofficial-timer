@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VEX Unofficial Timer</title>
+<meta name="description" content="Unofficial 60 second match timer for VEX GO Teamwork Challenge and Robot Skills Challenge practice">
+<meta name="theme-color" content="#0b0c0e">
+<link rel="icon" href="/shared/irap-icon.png">
+<style>
+:root{
+  --bg1:#2a2d31;--bg2:#0b0c0e;--ink:#fff;--muted:#a9b0b6;
+  --yellow:#ffc526;--orange:#ff8a1f;--blue:#1479c9;--blue-hi:#2290e6;
+  --panel:#1b1e22;--line:#3a4046;
+  --f:"Open Sans","Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Thai",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg2);color:var(--ink);font:400 16px/1.4 var(--f);overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(ellipse 120% 85% at 50% 0%,var(--bg1) 0%,#16181b 55%,var(--bg2) 100%)}
+button{font:inherit;color:inherit}
+
+/* ---------- clock ---------- */
+.stage{position:fixed;inset:0;display:grid;place-items:center;padding-bottom:9vh}
+.clock{display:grid;justify-items:center;gap:1.5vh}
+#time{font-weight:700;font-size:min(36vw,58vh);line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  text-shadow:0 .02em .05em rgba(0,0,0,.45);transition:opacity .2s}
+#time.count{font-size:min(46vw,66vh)}
+#time.warn,#time.count{color:var(--yellow)}
+#time.flash{animation:flash .4s steps(1) 3}
+@keyframes flash{0%{color:var(--orange)}50%{color:var(--ink)}}
+#pad{width:min(9vw,11vh);height:min(9vw,11vh);color:var(--ink);visibility:hidden}
+#pad.on{visibility:visible}
+#pad.blink{visibility:visible;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+body.paused #time{opacity:.45}
+
+/* ---------- bottom bar (trapezoid like the reference clip) ---------- */
+.bar{position:fixed;left:50%;bottom:0;transform:translateX(-50%);min-width:min(64vw,560px);height:min(7.5vh,9vw);
+  display:grid;place-items:center;padding:0 7vh;
+  background:linear-gradient(var(--blue-hi),var(--blue));clip-path:polygon(4.5% 0,95.5% 0,100% 100%,0 100%)}
+#label{font-weight:800;font-size:min(4.4vh,5.4vw);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+
+/* ---------- corner buttons ---------- */
+.cbtn{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);background:rgba(20,22,25,.72);display:grid;place-items:center;cursor:pointer;
+  transition:opacity .35s,background .15s}
+.cbtn:hover{background:rgba(48,52,58,.9)}
+.cbtn:focus-visible{outline:3px solid var(--blue-hi);outline-offset:2px}
+.cbtn svg{width:24px;height:24px}
+#gear{left:max(14px,env(safe-area-inset-left))}
+#play{right:max(76px,calc(env(safe-area-inset-right) + 76px))}
+#reset{right:max(14px,env(safe-area-inset-right))}
+#play.go{background:var(--blue);border-color:var(--blue-hi)}
+body.idle .cbtn{opacity:0;pointer-events:none}
+body.idle{cursor:none}
+
+/* tooltips */
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:#fff;color:#111;font:600 12px var(--f);padding:5px 8px;border-radius:7px;white-space:nowrap;pointer-events:none}
+#gear[data-tip]:hover::after{left:0;transform:none}
+#reset[data-tip]:hover::after{left:auto;right:0;transform:none}
+@media (pointer:coarse){[data-tip]:hover::after{display:none}}
+
+/* ---------- settings panel ---------- */
+#panel{position:fixed;left:max(14px,env(safe-area-inset-left));bottom:78px;width:min(320px,calc(100vw - 28px));
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#panel[hidden]{display:none}
+#panel h2{margin:0;font-size:15px;font-weight:700}
+.row{display:grid;gap:6px}
+.row>span{font-size:12px;color:var(--muted);font-weight:600}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:#0f1113;border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;border-radius:7px;padding:8px 6px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:#fff}
+.seg button:focus-visible,.item:focus-visible{outline:2px solid var(--blue-hi);outline-offset:1px}
+.item{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--line);background:#0f1113;border-radius:10px;
+  padding:9px 11px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;color:var(--ink)}
+.item:hover{border-color:var(--blue-hi)}
+.item svg{width:19px;height:19px;flex:none}
+.item .st{margin-left:auto;font-size:12px;color:var(--muted)}
+.note{font-size:11px;color:var(--muted);line-height:1.45}
+/* portrait phones : lift the corner buttons above the bar */
+@media (max-aspect-ratio:1/1){.cbtn{bottom:calc(min(7.5vh,9vw) + 14px)}#panel{bottom:calc(min(7.5vh,9vw) + 78px)}}
+@media (max-height:420px){#panel{bottom:72px;gap:9px;padding:11px}.seg button{padding:6px}.item{padding:7px 10px}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="clock">
+    <div id="time">1:00</div>
+    <svg id="pad" viewBox="0 0 64 40" fill="currentColor" aria-hidden="true">
+      <path d="M17 2h30c8.5 0 14 6 15.4 15.5l1.4 10.2C64.8 34.6 61 40 55.5 40c-3.5 0-6.3-2-8.3-5l-2.6-3.9H19.4L16.8 35c-2 3-4.8 5-8.3 5C3 40-.8 34.6.2 27.7L1.6 17.5C3 8 8.5 2 17 2z"/>
+      <path fill="#0b0c0e" d="M14 12h4v5h5v4h-5v5h-4v-5H9v-4h5z"/>
+      <circle fill="#0b0c0e" cx="46" cy="14.5" r="3"/><circle fill="#0b0c0e" cx="52" cy="20" r="3"/>
+      <circle fill="#0b0c0e" cx="40" cy="20" r="3"/><circle fill="#0b0c0e" cx="46" cy="25.5" r="3"/>
+    </svg>
+  </div>
+</div>
+<div class="bar"><div id="label"></div></div>
+
+<button class="cbtn" id="gear"></button>
+<button class="cbtn" id="play"></button>
+<button class="cbtn" id="reset"></button>
+
+<div id="panel" hidden role="dialog" aria-labelledby="pTitle">
+  <h2 id="pTitle"></h2>
+  <div class="row"><span data-t="mode"></span>
+    <div class="seg" role="group"><button id="mTeam"></button><button id="mSkills"></button></div>
+  </div>
+  <div class="row"><span data-t="language"></span>
+    <div class="seg" role="group"><button id="lTh" lang="th">ไทย</button><button id="lEn" lang="en">English</button></div>
+  </div>
+  <button class="item" id="bSnd"></button>
+  <button class="item" id="bFull"></button>
+  <a class="item" id="bBuilder" href="/vex-go-builder/"></a>
+  <div class="note" data-t="note"></div>
+</div>
+
+<script>
+/* Unofficial practice timer. Not affiliated with or endorsed by VEX Robotics. */
+const $=id=>document.getElementById(id);
+
+const MATCH=60;               // match length in seconds for both modes
+const SWITCH_FROM=35, SWITCH_TO=25;   // Teamwork driver switch window (remaining seconds)
+const WARN_AT=10;             // last seconds shown in yellow
+const COUNTDOWN=3;            // 3, 2, 1 before the match
+
+const T={
+  en:{settings:'Settings',mode:'Mode',language:'Language',team:'Teamwork Challenge',skills:'Robot Skills Challenge',
+      teamShort:'Teamwork',skillsShort:'Robot Skills',
+      starting:'Match starting',control:'Driver control',switch:'Driver switch',
+      start:'Start',pause:'Pause',resume:'Resume',reset:'Reset',sound:'Sound',on:'On',off:'Off',
+      full:'Full screen',exitFull:'Exit full screen',builder:'VEX GO Builder',
+      note:'Unofficial timer for practice. Not affiliated with VEX Robotics.'},
+  th:{settings:'ตั้งค่า',mode:'โหมด',language:'ภาษา',team:'Teamwork Challenge',skills:'Robot Skills Challenge',
+      teamShort:'Teamwork',skillsShort:'Robot Skills',
+      starting:'เตรียมเริ่ม',control:'ควบคุมหุ่น',switch:'สลับคนขับ',
+      start:'เริ่ม',pause:'หยุดชั่วคราว',resume:'เล่นต่อ',reset:'เริ่มใหม่',sound:'เสียง',on:'เปิด',off:'ปิด',
+      full:'เต็มจอ',exitFull:'ออกจากเต็มจอ',builder:'VEX GO Builder',
+      note:'ตัวจับเวลาสำหรับฝึกซ้อม ไม่ใช่ของ VEX Robotics'}
+};
+const store={get(k,d){try{const v=localStorage.getItem('vxt-'+k);return v===null?d:v;}catch{return d;}},
+             set(k,v){try{localStorage.setItem('vxt-'+k,v);}catch{}}};
+let lang=store.get('lang',(navigator.language||'').toLowerCase().startsWith('th')?'th':'en');
+let mode=store.get('mode','team')==='skills'?'skills':'team';
+let sndOn=store.get('sound','1')!=='0';
+const t=k=>T[lang][k];
+
+/* ---------- icons ---------- */
+const IC={
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  play:'<path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/>',
+  pause:'<rect x="6" y="4.5" width="4" height="15" rx="1" fill="currentColor"/><rect x="14" y="4.5" width="4" height="15" rx="1" fill="currentColor"/>',
+  reset:'<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/>',
+  sndOn:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  sndOff:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="m17 9 5 6M22 9l-5 6"/>',
+  full:'<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>',
+  exitFull:'<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>',
+  cube:'<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>'
+};
+const ico=n=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ---------- sound (generated with Web Audio, no files) ---------- */
+let ac=null;
+function audio(){ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch{ return null; } } if(ac.state==='suspended') ac.resume(); return ac; }
+function tone(freq,dur,{type='square',gain=.18,at=0}={}){
+  const a=audio(); if(!a) return;
+  const t0=a.currentTime+at, o=a.createOscillator(), g=a.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(gain,t0+.01);
+  g.gain.setValueAtTime(gain,t0+dur-.04); g.gain.linearRampToValueAtTime(0,t0+dur);
+  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0+dur+.02);
+}
+const SFX={
+  count:()=>tone(880,.16),
+  swap:()=>{ tone(1046,.22); tone(1318,.32,{at:.26}); },
+  end:()=>{ tone(196,1.3,{type:'sawtooth',gain:.2}); tone(247,1.3,{type:'sawtooth',gain:.12}); }
+};
+function sfx(n){ if(sndOn) SFX[n](); }
+
+/* ---------- timer state ---------- */
+// state : ready | count | run | done ; paused is a flag while count or run
+let state='ready', paused=false, endAt=0, left=0, lastShown=null, timer=0;
+
+function remainingMs(){ return paused?left:Math.max(0,endAt-performance.now()); }
+function fmt(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function inSwitch(s){ return mode==='team'&&s<=SWITCH_FROM&&s>SWITCH_TO; }
+
+function render(){
+  const time=$('time'), pad=$('pad'), label=$('label');
+  time.classList.remove('count','warn');
+  pad.className.baseVal='';
+  if(state==='ready'){ time.textContent=fmt(MATCH); label.textContent=t(mode==='team'?'team':'skills'); }
+  else if(state==='count'){
+    const s=Math.ceil(remainingMs()/1000);
+    time.textContent=String(Math.max(1,s)); time.classList.add('count'); label.textContent=t('starting');
+  }else if(state==='run'){
+    const s=Math.ceil(remainingMs()/1000);
+    time.textContent=fmt(s);
+    if(s<=WARN_AT) time.classList.add('warn');
+    if(inSwitch(s)){ label.textContent=t('switch'); pad.className.baseVal='blink'; }
+    else{ label.textContent=t('control'); pad.className.baseVal='on'; }
+  }else{ time.textContent=fmt(0); label.textContent=''; }
+  document.body.classList.toggle('paused',paused);
+  renderButtons();
+}
+
+function flash(){ const el=$('time'); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+$('time').addEventListener('animationend',e=>e.currentTarget.classList.remove('flash'));
+
+// setInterval keeps the timer and its sounds going when the tab is in the background
+function tick(){
+  if(paused) return;
+  const ms=remainingMs(), s=Math.ceil(ms/1000);
+  if(state==='count'){
+    if(ms<=0){ state='run'; endAt=performance.now()+MATCH*1000; lastShown=MATCH; render(); return; }
+    if(s!==lastShown){ lastShown=s; sfx('count'); render(); }
+  }else if(state==='run'){
+    if(ms<=0){ finish(); return; }
+    if(s!==lastShown){
+      if(mode==='team'&&(s===SWITCH_FROM||s===SWITCH_TO)){ sfx('swap'); flash(); }
+      lastShown=s; render();
+    }
+  }
+}
+
+function start(){
+  audio();   // unlock audio on the user's tap
+  state='count'; paused=false; endAt=performance.now()+COUNTDOWN*1000; lastShown=null;
+  clearInterval(timer); timer=setInterval(tick,50); wake(true); render();
+}
+function finish(){ state='done'; paused=false; clearInterval(timer); sfx('end'); wake(false); render(); setIdle(false); }
+function reset(){ state='ready'; paused=false; clearInterval(timer); $('time').classList.remove('flash'); wake(false); render(); setIdle(false); }
+function togglePause(){
+  if(state==='ready'||state==='done'){ start(); return; }
+  if(paused){ paused=false; endAt=performance.now()+left; wake(true); }
+  else{ left=remainingMs(); paused=true; wake(false); }
+  render();
+}
+
+/* keep the screen on while a match runs */
+let lock=null;
+async function wake(on){
+  try{ if(on&&!lock&&navigator.wakeLock){ lock=await navigator.wakeLock.request('screen'); lock.addEventListener('release',()=>{lock=null;}); }
+       else if(!on&&lock){ await lock.release(); lock=null; } }catch{}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&(state==='count'||state==='run')&&!paused) wake(true); });
+
+/* ---------- buttons and settings ---------- */
+function setTip(el,txt){ el.dataset.tip=txt; el.setAttribute('aria-label',txt); }
+function renderButtons(){
+  const running=(state==='count'||state==='run')&&!paused;
+  $('play').innerHTML=ico(running?'pause':'play');
+  $('play').classList.toggle('go',!running);
+  setTip($('play'),t(running?'pause':(paused?'resume':'start')));
+}
+function renderPanel(){
+  document.documentElement.lang=lang;
+  document.title='VEX Unofficial Timer';
+  document.querySelectorAll('[data-t]').forEach(el=>{ el.textContent=t(el.dataset.t); });
+  $('pTitle').textContent=t('settings');
+  $('gear').innerHTML=ico('gear'); setTip($('gear'),t('settings'));
+  $('reset').innerHTML=ico('reset'); setTip($('reset'),t('reset'));
+  $('mTeam').textContent=t('teamShort'); $('mSkills').textContent=t('skillsShort');
+  $('mTeam').setAttribute('aria-pressed',mode==='team'); $('mSkills').setAttribute('aria-pressed',mode==='skills');
+  $('lTh').setAttribute('aria-pressed',lang==='th'); $('lEn').setAttribute('aria-pressed',lang==='en');
+  $('bSnd').innerHTML=ico(sndOn?'sndOn':'sndOff')+`<span>${t('sound')}</span><span class="st">${t(sndOn?'on':'off')}</span>`;
+  $('bSnd').setAttribute('aria-pressed',sndOn);
+  const fs=!!document.fullscreenElement;
+  $('bFull').innerHTML=ico(fs?'exitFull':'full')+`<span>${t(fs?'exitFull':'full')}</span>`;
+  $('bFull').hidden=!document.documentElement.requestFullscreen;
+  $('bBuilder').innerHTML=ico('cube')+`<span>${t('builder')}</span>`;
+  render();
+}
+function setMode(m){ if(m===mode) return; mode=m; store.set('mode',m); reset(); renderPanel(); }
+$('mTeam').onclick=()=>setMode('team');
+$('mSkills').onclick=()=>setMode('skills');
+$('lTh').onclick=()=>{ lang='th'; store.set('lang','th'); renderPanel(); };
+$('lEn').onclick=()=>{ lang='en'; store.set('lang','en'); renderPanel(); };
+$('bSnd').onclick=()=>{ sndOn=!sndOn; store.set('sound',sndOn?'1':'0'); renderPanel(); if(sndOn) tone(880,.08,{gain:.1}); };
+$('bFull').onclick=()=>{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(()=>{}); };
+document.addEventListener('fullscreenchange',renderPanel);
+$('gear').onclick=e=>{ e.stopPropagation(); $('panel').hidden=!$('panel').hidden; setIdle(false); };
+$('panel').addEventListener('click',e=>e.stopPropagation());
+document.addEventListener('click',()=>{ $('panel').hidden=true; });
+$('play').onclick=e=>{ e.stopPropagation(); $('panel').hidden=true; togglePause(); };
+$('reset').onclick=e=>{ e.stopPropagation(); $('panel').hidden=true; reset(); };
+
+/* hide the corner buttons while a match runs and the pointer is still */
+let idleTimer=0;
+function setIdle(on){ document.body.classList.toggle('idle',on); }
+function poke(){
+  setIdle(false); clearTimeout(idleTimer);
+  idleTimer=setTimeout(()=>{ if((state==='count'||state==='run')&&!paused&&$('panel').hidden) setIdle(true); },2500);
+}
+['pointermove','pointerdown','touchstart'].forEach(ev=>addEventListener(ev,poke,{passive:true}));
+
+renderPanel();
+</script>
+</body>
+</html>
